@@ -21,7 +21,8 @@ from distutils.core import setup
 
 setup(
    name='ifdyutil',
-   version='9999',
-   py_modules=['ifdyutil']
+   # TODO: Figure out a way to grab the repo revision or something.
+   version='0.1',
+   packages=['ifdyutil']
 )
 
