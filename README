@@ -1,0 +1,15 @@
+
+= About =
+
+This package is pretty rough, and is only designed to be a support library for
+other packages. At the moment, the following languages are supported:
+
+- Python
+
+= Installation =
+
+== Python ==
+
+- cd python
+- python setup.py install
+
