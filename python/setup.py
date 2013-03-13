@@ -17,7 +17,18 @@ You should have received a copy of the GNU Lesser General Public License along
 with IFDYUtil.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import sys
+import os
+import subprocess
 from distutils.core import setup
+
+if 'test' in sys.argv:
+   # Documentation isn't clear *at all* and too lazy to go find examples in
+   # other projects. You know your language has a problem when something is
+   # simpler to do in Java.
+   os.chdir( './ifdyutil/tests' )
+   subprocess.call( ['nosetests', 'file_tests.py'] )
+   exit()
 
 setup(
    name='ifdyutil',
