@@ -26,7 +26,7 @@ class FileTests( unittest.TestCase ):
       pass
 
    def test_listdir_mime( self ):
-      test_list = file.listdir_mime( '.', 'application/x-python-code' )
+      test_list = file.listdir_mime( '.', ['application/x-python-code'] )
       assert [] != test_list
       for entry in test_list:
          assert 'application/x-python-code' == mimetypes.guess_type( entry )[0]

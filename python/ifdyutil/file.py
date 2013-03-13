@@ -29,10 +29,10 @@ def mkdir_p( path ):
          pass
       else: raise
 
-def listdir_mime( path, mimetype_in ):
+def listdir_mime( path, mimetypes_in ):
    entries_out = []
    for entry in os.listdir( path ):
-      if mimetype_in == mimetypes.guess_type( entry )[0]:
+      if mimetypes.guess_type( entry )[0] in mimetypes_in:
          entries_out.append( entry )
    return entries_out
 
