@@ -1,8 +1,10 @@
 
-try:
-   import gui
-except:
-   pass
+#try:
+#   import gui
+#except:
+#   pass
+#
+#import file
 
-import file
+__all__ = ['gui', 'file']
 
