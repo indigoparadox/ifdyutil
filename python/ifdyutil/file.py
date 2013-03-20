@@ -36,9 +36,3 @@ def listdir_mime( path, mimetypes_in ):
          entries_out.append( entry )
    return entries_out
 
-def getcsd():
-   
-   ''' Return the directory in which the calling script is located. '''
-
-   return os.path.dirname( os.path.realpath(__file__) )
-
