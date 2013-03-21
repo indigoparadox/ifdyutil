@@ -18,6 +18,7 @@ with IFDYUtil.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import subprocess
+import re
 
 def snapshot_zfs( lvtarget, vgtarget ):
    print "ZFS snapshot functionality not yet available."
@@ -52,4 +53,18 @@ def clean_snapshots_lvm( lvtarget, vgtarget, maxdays ):
    #       maxdays.
    print "Snapshot cleanup is not yet available."
    return False
+
+def list_mounts_lvm():
+   pattern_mapper = re.compile( r'^/dev/mapper/(\S*)\s*(\S*)' )
+   lvm_mounts = [] # A list of tuples describing mounted LVM volumes.
+   try:
+      with open( '/proc/mounts', 'r' ) as file_mounts:
+         for line in file_mounts:
+            line_match = pattern_mapper.match( line )
+            if None != line_match:
+               lvm_mounts.append( line_match.groups() )
+   except:
+      return []
+
+   return lvm_mounts
 
