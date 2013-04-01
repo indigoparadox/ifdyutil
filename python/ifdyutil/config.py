@@ -60,7 +60,9 @@ def load():
 def check_var( key, cfg=None ):
    
    ''' Verify that the value stored under the key in cfg is not empty and
-   optionally matches regex. '''
+   optionally matches regex. This function returns the value stored for key in
+   the config dictionary and should be used instead of [] for values that must
+   not be empty.'''
 
    # TODO: Implement regex.
 
@@ -73,6 +75,8 @@ def check_var( key, cfg=None ):
       raise MissingConfigException(
          'Config key %s is missing or invalid.' % key
       )
+
+   return cfg[key]
 
 def check_root():
    if 0 != os.getuid():
