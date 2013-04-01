@@ -40,7 +40,6 @@ def load():
       for line in system_config_file:
          config_match = pattern_config_var.match( line )
          if None != config_match and None == config_match.groups()[0]:
-            print config_match.groups()
             cfg[config_match.groups()[1]] = config_match.groups()[2]
 
    try:
@@ -50,7 +49,6 @@ def load():
          for line in system_config_file:
             config_match = pattern_config_var.match( line )
             if None != config_match and None == config_match.groups()[0]:
-               print config_match.groups()
                cfg[config_match.groups()[1]] = config_match.groups()[2]
    except:
       # Per-user config is optional.
