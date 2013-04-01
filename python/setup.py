@@ -28,6 +28,7 @@ if 'test' in sys.argv:
    # simpler to do in Java.
    os.chdir( './ifdyutil/tests' )
    subprocess.call( ['nosetests', 'file_tests.py'] )
+   subprocess.call( ['nosetests', 'config_tests.py'] )
    exit()
 
 setup(

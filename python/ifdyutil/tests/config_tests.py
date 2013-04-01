@@ -17,12 +17,17 @@ You should have received a copy of the GNU Lesser General Public License along
 with IFDYUtil.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-#try:
-#   import gui
-#except:
-#   pass
-#
-#import file
+import unittest
+from .. import config
 
-__all__ = ['gui', 'file', 'snapshot', 'net', 'config']
+class ConfigTests( unittest.TestCase ):
+   def runTest( self ):
+      pass
+
+   def test_load( self ):
+      cfg = config.load()
+
+      print cfg
+
+      assert 'true' == cfg['QN_VARS_DEFINED']
 
