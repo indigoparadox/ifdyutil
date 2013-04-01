@@ -79,7 +79,7 @@ def check_var( key, cfg=None ):
    return cfg[key]
 
 def check_root():
-   if 0 != os.getuid():
+   if 0 != os.geteuid():
       raise InsufficientPrivsException(
          'This script requires root privileges.'
       )
