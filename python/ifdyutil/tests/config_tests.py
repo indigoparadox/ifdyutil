@@ -30,6 +30,5 @@ class ConfigTests( unittest.TestCase ):
       assert 'true' == cfg['QN_VARS_DEFINED']
 
    def test_check( self ):
-      config.check( 'QN_VARS_DEFINED' )
-      config.check( 'INED' )
+      config.check_var( 'QN_VARS_DEFINED' )
 

@@ -23,6 +23,9 @@ import os
 class MissingConfigException( Exception ):
    pass
 
+class InsufficientPrivsException( Exception ):
+   pass
+
 def load():
 
    ''' Return the config for ifdy-scripts. Conglomerate system-wide config in
@@ -56,7 +59,7 @@ def load():
    return cfg
 
 #def check( key, cfg=None, regex=None ):
-def check( key, cfg=None ):
+def check_var( key, cfg=None ):
    
    ''' Verify that the value stored under the key in cfg is not empty and
    optionally matches regex. '''
@@ -71,5 +74,11 @@ def check( key, cfg=None ):
    except KeyError:
       raise MissingConfigException(
          'Config key %s is missing or invalid.' % key
+      )
+
+def check_root():
+   if 0 != os.getuid():
+      raise InsufficientPrivsException(
+         'This script requires root privileges.'
       )
 
