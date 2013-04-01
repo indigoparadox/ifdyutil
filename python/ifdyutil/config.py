@@ -20,6 +20,9 @@ with IFDYUtil.  If not, see <http://www.gnu.org/licenses/>.
 import re
 import os
 
+class MissingConfigException( Exception ):
+   pass
+
 def load():
 
    ''' Return the config for ifdy-scripts. Conglomerate system-wide config in
@@ -51,4 +54,22 @@ def load():
       pass
 
    return cfg
+
+#def check( key, cfg=None, regex=None ):
+def check( key, cfg=None ):
+   
+   ''' Verify that the value stored under the key in cfg is not empty and
+   optionally matches regex. '''
+
+   # TODO: Implement regex.
+
+   if None == cfg:
+      cfg = load()
+
+   try:
+      x = cfg[key]
+   except KeyError:
+      raise MissingConfigException(
+         'Config key %s is missing or invalid.' % key
+      )
 

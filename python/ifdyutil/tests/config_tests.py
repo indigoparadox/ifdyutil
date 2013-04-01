@@ -27,7 +27,9 @@ class ConfigTests( unittest.TestCase ):
    def test_load( self ):
       cfg = config.load()
 
-      print cfg
-
       assert 'true' == cfg['QN_VARS_DEFINED']
+
+   def test_check( self ):
+      config.check( 'QN_VARS_DEFINED' )
+      config.check( 'INED' )
 
