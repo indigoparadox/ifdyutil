@@ -20,6 +20,7 @@ with IFDYUtil.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import errno
 import mimetypes
+import subprocess
 
 def mkdir_p( path ):
    try:
@@ -35,4 +36,29 @@ def listdir_mime( path, mimetypes_in ):
       if mimetypes.guess_type( entry )[0] in mimetypes_in:
          entries_out.append( entry )
    return entries_out
+
+def get_process_pid( process_name, strict=True, uid=None ):
+   # Build the args list.
+   args = []
+   if strict:
+      args.append( '-f' )
+
+   if None != uid:
+      args.append( '-u' )
+      args.append( uid )
+      
+   # Get a list of processes matching the name.
+   command = ['pgrep'] + args + ['^{}$'.format( process_name )]
+   kill_proc = subprocess.Popen( command, stdout=subprocess.PIPE )
+
+   # Iterate through all found PID.
+   pids_out = []
+   while True:
+      pid_kill = kill_proc.stdout.readline().rstrip()
+      if pid_kill.isdigit():
+         pids_out.append( pid_kill )
+      else:
+         break
+
+   return pids_out
 

@@ -31,3 +31,7 @@ class FileTests( unittest.TestCase ):
       for entry in test_list:
          assert 'application/x-python-code' == mimetypes.guess_type( entry )[0]
 
+   def test_get_process_pid( self ):
+      # TODO: Arrange an actual test for this.
+      print file.get_process_pid( 'conky' )
+

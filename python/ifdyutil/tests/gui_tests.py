@@ -17,29 +17,13 @@ You should have received a copy of the GNU Lesser General Public License along
 with IFDYUtil.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import pynotify
-import subprocess
-import os
-import file
+import unittest
+from .. import gui
 
-DESKTOP_ENVS = ['awesome']
+class GUITests( unittest.TestCase ):
+   def runTest( self ):
+      pass
 
-def notify( message, title=None ):
-   if title is None:
-      title = "Script"
-   else:
-      title = title
-   pynotify.init( "qn-script" )
-   notice = pynotify.Notification( title, message )
-   notice.show()
+   def test_desktop_up( self ):
+      assert gui.desktop_up() == True
 
-def desktop_up():
-
-   ''' Return true if a known graphical desktop environment is running. '''
-
-   for env in DESKTOP_ENVS:
-      if [] != file.get_process_pid( env, strict=False, uid=str(os.geteuid()) ):
-         return True
-
-   return False
-      
