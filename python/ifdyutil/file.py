@@ -21,6 +21,14 @@ import os
 import errno
 import mimetypes
 import subprocess
+import re
+
+FS_ATTRIBS_OPPOSITE = {
+   'rw': 'ro',
+   'ro': 'rw',
+   'exec': 'noexec',
+   'noexec': 'exec',
+}
 
 def mkdir_p( path ):
    try:
@@ -61,4 +69,16 @@ def get_process_pid( process_name, strict=True, uid=None ):
          break
 
    return pids_out
+
+def remount( path, lock_dir_path ):
+   print ' '
+   # TODO: Check for existing lock on this mount.
+   for lock_iter in os.listdir( lock_dir_path ):
+      print os.path.join( lock_dir_path, lock_iter )
+      #re.match( r'(.*):(.*)', lock_contents )
+
+   # TODO: Schedule automatic remount with opposite FS attrib for script exit.
+   #, str( os.getpid() )
+
+   # TODO: Perform remount.
 

@@ -33,5 +33,9 @@ class FileTests( unittest.TestCase ):
 
    def test_get_process_pid( self ):
       # TODO: Arrange an actual test for this.
-      print file.get_process_pid( 'conky' )
+      #print file.get_process_pid( 'conky' )
+      pass
+
+   def test_remount( self ):
+      print file.remount( '/foo/fii', '/var/lock' )
 
