@@ -67,7 +67,7 @@ def create_lock( lock_path ):
    ''' Create a lock file containing the PID of the current process. '''
 
    if not os.path.isfile( lock_path ):
-      with open( lock_path ) as pid_file:
+      with open( lock_path, 'w' ) as pid_file:
          pid_file.write( '{}'.format( os.getpid() ) )
 
 def check_lock( lock_path, unlink_old=True ):
