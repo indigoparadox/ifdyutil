@@ -62,3 +62,27 @@ def get_process_pid( process_name, strict=True, uid=None ):
 
    return pids_out
 
+def create_lock( lock_path ):
+
+   ''' Create a lock file containing the PID of the current process. '''
+
+   if not os.path.isfile( lock_path ):
+      with open( lock_path ) as pid_file:
+         pid_file.write( '{}'.format( os.getpid() ) )
+
+def check_lock( lock_path, unlink_old=True ):
+
+   ''' Make sure the existing lock file (if any) doesn't point to a running
+   process. Return true if it does, false if it doesn't. '''
+
+   if os.access( lock_path, os.F_OK ):
+      with open( lock_path, 'r' ) as pid_file:
+         pid_file.seek( 0 )
+         existing_pid = pid_file.readline()
+         if os.path.exists( '/proc/{}'.format( existing_pid ) ):
+            return True
+         else:
+            if unlink_old:
+               os.unlink( lock_path )
+            return False
+
