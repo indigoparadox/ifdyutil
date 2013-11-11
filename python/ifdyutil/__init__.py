@@ -24,5 +24,5 @@ with IFDYUtil.  If not, see <http://www.gnu.org/licenses/>.
 #
 #import file
 
-__all__ = ['gui', 'file', 'snapshot', 'net', 'config']
+__all__ = ['gui', 'file', 'snapshot', 'net', 'config', 'archive']
 
