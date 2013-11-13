@@ -107,6 +107,7 @@ def handle( archive_path, key, salt=None ):
          try:
             with open( salt_path, 'r' ) as salt_file:
                salt = salt_file.readline().strip()
+            break
          except:
             pass
 
@@ -146,6 +147,7 @@ def create( archive_path, key, salt=None, item_list=[] ):
          try:
             with open( salt_path, 'r' ) as salt_file:
                salt = salt_file.readline().strip()
+            break
          except:
             pass
 
