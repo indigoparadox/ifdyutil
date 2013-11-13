@@ -100,6 +100,8 @@ def handle( archive_path, key, salt=None ):
 
    global archive_size
 
+   logger = logging.getLogger( 'ifdyutil.archive.handle' )
+
    # Try to load the salt from a salt file.
    # TODO: Add a versioning system to the file with salt in header.
    if not salt:
