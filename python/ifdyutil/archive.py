@@ -32,11 +32,9 @@ from Crypto.Cipher import AES
 
 CHUNK_LEN = 64 * 1024
 
-def extract( archive_path, key, salt, extract_path, files=None ):
+def extract( archive_file, extract_path, files=None ):
 
    logger = logging.getLogger( 'ifdyutil.archive.extract' )
-
-   arcz = ifdyutil.archive.handle( archive_path, key, salt )
 
    # Make sure extract_path exists.
    try:
@@ -46,22 +44,20 @@ def extract( archive_path, key, salt, extract_path, files=None ):
       pass
 
    # TODO: Implement files extract list.
-   arcz.extractall( extract_path )
+   archive_file.extractall( extract_path )
 
-def search( archive_path, key, salt, search_phrase ):
+def search( archive_file, search_phrase ):
 
    ''' Search the given archive for logs with the given terms. '''
 
    logger = logging.getLogger( 'ifdyutil.archive.search' )
 
-   arcz = handle( archive_path, key, salt )
-
    # Load the index into a storage unit.
    ix_storage = whoosh.filedb.filestore.RamStorage()
-   for zipped_name in arcz.namelist():
+   for zipped_name in archive_file.namelist():
       if zipped_name.startswith( '/index' ):
          zipped_base = os.path.basename( zipped_name )
-         with arcz.open( zipped_name ) as zipped_file:
+         with archive_file.open( zipped_name ) as zipped_file:
             with ix_storage.create_file( zipped_base ) as ix_file:
                ix_file.write( zipped_file.read() )
 
@@ -81,7 +77,7 @@ def search( archive_path, key, salt, search_phrase ):
       result_list = []
       for hit in results:
          # TODO: Use a more portable root.
-         hit_file = arcz.open( '/' + hit.get( 'path' ) )
+         hit_file = archive_file.open( '/' + hit.get( 'path' ) )
          result_list.append( {
             'filename': hit.get( 'path' ),
             'contents': hit_file.read()
