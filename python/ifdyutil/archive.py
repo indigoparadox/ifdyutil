@@ -107,9 +107,10 @@ def handle( archive_path, key, salt=None ):
          try:
             with open( salt_path, 'r' ) as salt_file:
                salt = salt_file.readline().strip()
+               logger.info( 'Salt found: {}'.format( salt_path ) )
             break
          except:
-            pass
+            logger.warning( 'No salt found: {}'.format( salt_path ) )
 
    with open( archive_path, 'rb' ) as archive_file:
       archive_size = struct.unpack(
@@ -147,9 +148,10 @@ def create( archive_path, key, salt=None, item_list=[] ):
          try:
             with open( salt_path, 'r' ) as salt_file:
                salt = salt_file.readline().strip()
+               logger.info( 'Salt found: {}'.format( salt_path ) )
             break
          except:
-            pass
+            logger.warning( 'No salt found: {}'.format( salt_path ) )
 
    # Create the search index for the archive.
    schema = whoosh.fields.Schema(
