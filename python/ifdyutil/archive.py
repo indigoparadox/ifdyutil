@@ -99,6 +99,7 @@ def handle( archive_path, key, salt=None ):
    ''' Open the given archive and return a zipfile handle. '''
 
    global archive_size
+   global archive_current
 
    logger = logging.getLogger( 'ifdyutil.archive.handle' )
 
@@ -115,10 +116,12 @@ def handle( archive_path, key, salt=None ):
             logger.warning( 'No salt found: {}'.format( salt_path ) )
 
    with open( archive_path, 'rb' ) as archive_file:
+      archive_current = 0
       archive_size = struct.unpack(
          '<Q', archive_file.read( struct.calcsize('Q') )
       )[0]
       iv = archive_file.read( 16 )
+      archive_current += 16
 
       # Begin decrypting the archive data.
       key_crypt = pbkdf2.PBKDF2( key, salt ).read( 32 )
@@ -126,6 +129,7 @@ def handle( archive_path, key, salt=None ):
       plain_string = ''
       while True:
          chunk = archive_file.read( CHUNK_LEN )
+         archive_current += CHUNK_LEN
          if 0 == len( chunk ):
             break
          plain_string = plain_string + decryptor.decrypt( chunk )
