@@ -32,6 +32,15 @@ from Crypto.Cipher import AES
 
 CHUNK_LEN = 64 * 1024
 
+archive_size = 0
+archive_current = 0
+
+def _salt_paths( archive_path ):
+   return [
+      os.path.join( os.path.dirname( archive_path ), 'salt.txt' ),
+      os.path.join( os.path.expanduser( '~' ), '.saltzaes.txt' ),
+   ]
+
 def extract( archive_file, extract_path, files=None ):
 
    logger = logging.getLogger( 'ifdyutil.archive.extract' )
@@ -85,9 +94,21 @@ def search( archive_file, search_phrase ):
 
    return result_list
 
-def handle( archive_path, key, salt ):
+def handle( archive_path, key, salt=None ):
    
    ''' Open the given archive and return a zipfile handle. '''
+
+   global archive_size
+
+   # Try to load the salt from a salt file.
+   # TODO: Add a versioning system to the file with salt in header.
+   if not salt:
+      for salt_path in _salt_paths( archive_path ):
+         try:
+            with open( salt_path, 'r' ) as salt_file:
+               salt = salt_file.readline().strip()
+         except:
+            pass
 
    with open( archive_path, 'rb' ) as archive_file:
       archive_size = struct.unpack(
@@ -109,7 +130,7 @@ def handle( archive_path, key, salt ):
    arcio = StringIO.StringIO( plain_string )
    return zipfile.ZipFile( arcio )
 
-def create( archive_path, key, salt, item_list ):
+def create( archive_path, key, salt=None, item_list=[] ):
 
    ''' Item list must be in the format:
    [{'path_abs', 'path_rel, 'contents'}] '''
@@ -117,6 +138,16 @@ def create( archive_path, key, salt, item_list ):
    # TODO: Move this function to ifdyutil.
 
    logger = logging.getLogger( 'ifdyutil.archive.create' )
+
+   # Try to load the salt from a salt file.
+   # TODO: Add a versioning system to the file with salt in header.
+   if not salt:
+      for salt_path in _salt_paths( archive_path ):
+         try:
+            with open( salt_path, 'r' ) as salt_file:
+               salt = salt_file.readline().strip()
+         except:
+            pass
 
    # Create the search index for the archive.
    schema = whoosh.fields.Schema(
