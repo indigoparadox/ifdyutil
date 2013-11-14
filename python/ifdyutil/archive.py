@@ -196,6 +196,20 @@ def create( archive_path, key, salt=None, item_list=[], index=True ):
    total_bytes = 0
    with zipfile.ZipFile( arcio, 'w', zipfile.ZIP_DEFLATED ) as arcz:
       for item in item_list:
+         # Make sure everything is in unicode, first.
+         if isinstance( item['path_rel'], str ):
+            item['path_rel'] = item['path_rel'].decode( 'ascii' )
+         if isinstance( item['contents'], str ):
+            item['contents'] = item['contents'].decode( 'ascii' )
+
+         # Replace special characters with entities.
+         item['path_rel'] = \
+            item['path_rel'].encode( 'ascii', errors='xmlcharrefreplace' )
+         item['path_rel'] = item['path_rel'].decode( 'ascii' )
+         item['contents'] = \
+            item['contents'].encode( 'ascii', errors='xmlcharrefreplace' )
+         item['contents'] = item['contents'].decode( 'ascii' )
+
          # Index the item if applicable.
          if index:
             logger.info( 'Indexing {}...'.format( item['path_rel'] ) )
@@ -207,7 +221,8 @@ def create( archive_path, key, salt=None, item_list=[], index=True ):
          # Store the item.
          logger.info( 'Storing {}...'.format( item['path_rel'] ) )
          arcz.writestr(
-            item['path_rel'], item['contents']
+            item['path_rel'].decode( 'ascii' ),
+            item['contents'].decode( 'ascii' )
          )
          total_bytes += len( item['contents'] )
 
