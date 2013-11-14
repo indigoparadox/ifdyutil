@@ -23,6 +23,7 @@ import StringIO
 import zipfile
 import pbkdf2
 import struct
+import base64
 import whoosh.qparser
 import whoosh.fields
 import whoosh.query
@@ -31,9 +32,7 @@ from Crypto import Random
 from Crypto.Cipher import AES
 
 CHUNK_LEN = 64 * 1024
-
-archive_size = 0
-archive_current = 0
+VERSIONS = ['RND1']
 
 def _salt_paths( archive_path ):
    return [
@@ -98,9 +97,6 @@ def handle( archive_path, key, salt=None ):
    
    ''' Open the given archive and return a zipfile handle. '''
 
-   global archive_size
-   global archive_current
-
    logger = logging.getLogger( 'ifdyutil.archive.handle' )
 
    # Try to load the salt from a salt file.
@@ -117,9 +113,34 @@ def handle( archive_path, key, salt=None ):
 
    with open( archive_path, 'rb' ) as archive_file:
       archive_current = 0
+      archive_v_num = 0
+
+      # Get the file version.
+      archive_version = archive_file.read( 4 )
+      if not archive_version in VERSIONS:
+         logger.warn( 'Archive has no valid version.' )
+         archive_file.seek( 0, os.SEEK_SET )
+         archive_version = None
+      else:
+         archive_current += 4
+
+         # TODO: Determine the numeric part of the version.
+
+         archive_v_num = 1
+
+      # Newer archives store the salt in the header.
+      if 1 <= archive_v_num:
+         logger.info( 'Salt in header for archive: {}'.format( archive_path ) )
+         salt = archive_file.read( 160 )
+         archive_current += 160
+         logger.debug( 'Salt read: {}'.format(
+            base64.b64encode( salt )
+         ) )
+
       archive_size = struct.unpack(
-         '<Q', archive_file.read( struct.calcsize('Q') )
+         '<Q', archive_file.read( struct.calcsize( 'Q' ) )
       )[0]
+      archive_current += struct.calcsize( 'Q' )
       iv = archive_file.read( 16 )
       archive_current += 16
 
@@ -135,8 +156,58 @@ def handle( archive_path, key, salt=None ):
          plain_string = plain_string + decryptor.decrypt( chunk )
 
    # Open the decrypted string as a ZIP file.
-   arcio = StringIO.StringIO( plain_string )
-   return zipfile.ZipFile( arcio )
+   try:
+      arcio = StringIO.StringIO( plain_string )
+      return zipfile.ZipFile( arcio )
+   except Exception, e:
+      logger.error( 'Unable to open archive "{}": {}'.format(
+         archive_path, e.message
+      ) )
+      return None
+
+# TODO: Merge upgrade and create.
+
+def upgrade( archive_in_file, archive_out_path, new_key, new_salt=None ):
+
+   ''' This function should always write out the given archive in the current
+   format. '''
+
+   logger = logging.getLogger( 'ifdyutil.archive.upgrade' )
+
+   if not new_salt:
+      new_salt = Random.get_random_bytes( 160 )
+
+   # Copy the old archive to the new archive.
+   arcio = StringIO.StringIO()
+   with zipfile.ZipFile( arcio, 'w', zipfile.ZIP_DEFLATED ) as arcz_out:
+      for name in archive_in_file.filelist:
+         arcz_out.writestr( name, archive_in_file.read( name ) )
+
+   # Setup the encryptor. Expand and set the key.
+   iv = Random.get_random_bytes( 16 )
+   key_crypt = pbkdf2.PBKDF2( new_key, new_salt ).read( 32 )
+   encryptor = AES.new( key_crypt, AES.MODE_CBC, iv )
+
+   # Open the output file and start writing.
+   arcio.seek( 0, os.SEEK_SET )
+   with open( archive_out_path, 'wb' ) as archive_out_file:
+      archive_out_file.write( VERSIONS[len( VERSIONS ) - 1] )
+      archive_out_file.write( new_salt )
+      logger.debug( 'Salt generated: {}'.format(
+         base64.b64encode( new_salt )
+      ) )
+      archive_out_file.write( struct.pack( '<Q', len( arcio.getvalue() ) ) )
+      archive_out_file.write( iv )
+      # Process each chunk of the ZIP.
+      while True:
+         chunk = arcio.read( CHUNK_LEN )
+         if len( chunk ) == 0:
+            # We're done!
+            break
+         elif 0 != len( chunk ) % 16:
+            # Handle the trailing end.
+            chunk += ' ' * (16 - len( chunk ) % 16)
+         archive_out_file.write( encryptor.encrypt( chunk ) )
 
 def create( archive_path, key, salt=None, item_list=[] ):
 
@@ -149,6 +220,7 @@ def create( archive_path, key, salt=None, item_list=[] ):
 
    # Try to load the salt from a salt file.
    # TODO: Add a versioning system to the file with salt in header.
+   # TODO: Port upgrade stuff from upgrade().
    if not salt:
       for salt_path in _salt_paths( archive_path ):
          try:
