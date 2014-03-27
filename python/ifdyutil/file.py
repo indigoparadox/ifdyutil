@@ -23,6 +23,7 @@ import mimetypes
 import subprocess
 import re
 import logging
+import atexit
 
 FS_ATTRIBS_OPPOSITE = {
    'rw': 'ro',
@@ -85,15 +86,32 @@ def _check_remount_lock( fs_mount_path, perm ):
 
    for pid_entry_iter in os.listdir( FS_REMOUNT_LOCK_PATH ):
       pid_lock_path = os.path.join( FS_REMOUNT_LOCK_PATH, pid_entry_iter )
+
+      # Check to make sure we're not looking at our own lock file.
+      if int( pid_entry_iter ) == os.getpid():
+         continue
+
+      # Check if the iterated process is still active.
+      try:
+         os.getsid( int( pid_entry_iter ) )
+      except OSError:
+         logger.warn(
+            'No process found for PID {}. Removing lock...'.format(
+               pid_entry_iter
+            )
+         )
+         os.unlink( pid_lock_path )
+         continue
+
+      # Check if the iterated process is locking this mount.
       with open( pid_lock_path ) as pid_lock_file:
          for fs_line in pid_lock_file:
             fs_status = fs_line.strip().split( ':' )
-
             if fs_status[0] == fs_mount_path:
                if perm == FS_ATTRIBS_OPPOSITE[fs_status[1]]:
                   logger.warn(
-                     '"{}" is in use, not remounting with "{}".'.format(
-                        fs_status[0], perm
+                     '"{}" is in use by {}, not remounting with "{}".'.format(
+                        fs_status[0], pid_entry_iter, perm
                      )
                   )
                   return False
@@ -101,7 +119,7 @@ def _check_remount_lock( fs_mount_path, perm ):
    # No locks found.
    return True
 
-def remount( fs_mount_path, perm ):
+def remount( fs_mount_path, perm, register_cleanup=True ):
 
    logger = logging.getLogger( 'util.remount' )
 
@@ -111,6 +129,17 @@ def remount( fs_mount_path, perm ):
    if _check_remount_lock( fs_mount_path, perm ):
       logger.debug( 'Remounting "{}" with "{}".'.format( fs_mount_path, perm ) )
 
+      # Create lock for this mount.
+      pid_lock_path = os.path.join( FS_REMOUNT_LOCK_PATH, str( os.getpid() ) )
+      if os.path.exists( pid_lock_path ):
+         # Append to the existing lock file.
+         with open( pid_lock_path, 'a' ) as pid_lock_file:
+            pid_lock_file.write( '\n{}:{}'.format( fs_mount_path, perm ) )
+      else:
+         # Create a new lock file.
+         with open( pid_lock_path, 'w' ) as pid_lock_file:
+            pid_lock_file.write( '{}:{}'.format( fs_mount_path, perm ) )
+
       # Perform the remount and verify its success.
       mount_proc = subprocess.Popen(
          ['mount', '-o', 'remount,' + perm, fs_mount_path]
@@ -118,10 +147,14 @@ def remount( fs_mount_path, perm ):
       mount_proc.communicate()
       if mount_proc.returncode:
          raise Remounting( 'Mount process failed.' )
-      else:
-         logger.debug( 'Remount completed successfully.' )
+      #else:
+      #   logger.debug( 'Remount completed successfully.' )
 
-   # TODO: Schedule automatic remount with opposite FS attrib for script exit.
+      # Schedule automatic remount with opposite FS attrib for script exit.
+      if register_cleanup:
+         atexit.register(
+            remount, fs_mount_path, FS_ATTRIBS_OPPOSITE[perm], False
+         )
 
 def create_lock( lock_path ):
 
