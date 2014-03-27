@@ -22,6 +22,7 @@ import errno
 import mimetypes
 import subprocess
 import re
+import logging
 
 FS_ATTRIBS_OPPOSITE = {
    'rw': 'ro',
@@ -29,6 +30,11 @@ FS_ATTRIBS_OPPOSITE = {
    'exec': 'noexec',
    'noexec': 'exec',
 }
+
+FS_REMOUNT_LOCK_PATH = '/var/lock/qnrmount'
+
+class RemountException( Exception ):
+   pass
 
 def mkdir_p( path ):
    try:
@@ -70,17 +76,52 @@ def get_process_pid( process_name, strict=True, uid=None ):
 
    return pids_out
 
-def remount( path, lock_dir_path ):
-   print ' '
-   # TODO: Check for existing lock on this mount.
-   for lock_iter in os.listdir( lock_dir_path ):
-      print os.path.join( lock_dir_path, lock_iter )
-      #re.match( r'(.*):(.*)', lock_contents )
+def _check_remount_lock( fs_mount_path, perm ):
+
+   ''' Make sure we can perform the requested remount. Return True if we can,
+   or False otherwise. '''
+
+   logger = logging.getLogger( 'util.remount.lock' )
+
+   for pid_entry_iter in os.listdir( FS_REMOUNT_LOCK_PATH ):
+      pid_lock_path = os.path.join( FS_REMOUNT_LOCK_PATH, pid_entry_iter )
+      with open( pid_lock_path ) as pid_lock_file:
+         for fs_line in pid_lock_file:
+            fs_status = fs_line.strip().split( ':' )
+
+            if fs_status[0] == fs_mount_path:
+               if perm == FS_ATTRIBS_OPPOSITE[fs_status[1]]:
+                  logger.warn(
+                     '"{}" is in use, not remounting with "{}".'.format(
+                        fs_status[0], perm
+                     )
+                  )
+                  return False
+
+   # No locks found.
+   return True
+
+def remount( fs_mount_path, perm ):
+
+   logger = logging.getLogger( 'util.remount' )
+
+   if not perm in FS_ATTRIBS_OPPOSITE.keys():
+      raise RemountException( 'Unsupported perms: "{}"'.format( perm ) )
+
+   if _check_remount_lock( fs_mount_path, perm ):
+      logger.debug( 'Remounting "{}" with "{}".'.format( fs_mount_path, perm ) )
+
+      # Perform the remount and verify its success.
+      mount_proc = subprocess.Popen(
+         ['mount', '-o', 'remount,' + perm, fs_mount_path]
+      )
+      mount_proc.communicate()
+      if mount_proc.returncode:
+         raise Remounting( 'Mount process failed.' )
+      else:
+         logger.debug( 'Remount completed successfully.' )
 
    # TODO: Schedule automatic remount with opposite FS attrib for script exit.
-   #, str( os.getpid() )
-
-   # TODO: Perform remount.
 
 def create_lock( lock_path ):
 
@@ -106,4 +147,3 @@ def check_lock( lock_path, unlink_old=True ):
                os.unlink( lock_path )
             return False
 
->>>>>>> /tmp/file.py~other.9cfBXV
