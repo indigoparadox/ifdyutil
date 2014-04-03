@@ -127,7 +127,7 @@ def remount( fs_mount_path, perm, register_cleanup=True ):
       raise RemountException( 'Unsupported perms: "{}"'.format( perm ) )
 
    if _check_remount_lock( fs_mount_path, perm ):
-      logger.debug( 'Remounting "{}" with "{}".'.format( fs_mount_path, perm ) )
+      logger.info( 'Remounting "{}" with "{}".'.format( fs_mount_path, perm ) )
 
       # Create lock for this mount.
       pid_lock_path = os.path.join( FS_REMOUNT_LOCK_PATH, str( os.getpid() ) )
