@@ -17,12 +17,26 @@ You should have received a copy of the GNU Lesser General Public License along
 with IFDYUtil.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-#try:
-#   import gui
-#except:
-#   pass
-#
-#import file
+UNKNOWN = 3
+CRITICAL = 2
+WARNING = 1
+OK = 0
 
-__all__ = ['gui', 'file', 'snapshot', 'net', 'config', 'archive', 'nagios']
+import sys
+
+def exit_unknown( message ):
+   print( 'UNKNOWN - {}'.format( message ) )
+   sys.exit( UNKNOWN )
+
+def exit_critical( message ):
+   print( 'CRITICAL - {}'.format( message ) )
+   sys.exit( CRITICAL )
+
+def exit_warning( message ):
+   print( 'WARNING - {}'.format( message ) )
+   sys.exit( WARNING )
+
+def exit_ok( message ):
+   print( 'OK - {}'.format( message ) )
+   sys.exit( OK )
 
