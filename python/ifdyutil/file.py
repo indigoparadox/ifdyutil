@@ -21,6 +21,21 @@ import os
 import errno
 import mimetypes
 import subprocess
+import re
+import logging
+import atexit
+
+FS_ATTRIBS_OPPOSITE = {
+   'rw': 'ro',
+   'ro': 'rw',
+   'exec': 'noexec',
+   'noexec': 'exec',
+}
+
+FS_REMOUNT_LOCK_PATH = '/var/lock/qnrmount'
+
+class RemountException( Exception ):
+   pass
 
 def mkdir_p( path ):
    try:
@@ -61,6 +76,85 @@ def get_process_pid( process_name, strict=True, uid=None ):
          break
 
    return pids_out
+
+def _check_remount_lock( fs_mount_path, perm ):
+
+   ''' Make sure we can perform the requested remount. Return True if we can,
+   or False otherwise. '''
+
+   logger = logging.getLogger( 'util.remount.lock' )
+
+   for pid_entry_iter in os.listdir( FS_REMOUNT_LOCK_PATH ):
+      pid_lock_path = os.path.join( FS_REMOUNT_LOCK_PATH, pid_entry_iter )
+
+      # Check to make sure we're not looking at our own lock file.
+      if int( pid_entry_iter ) == os.getpid():
+         continue
+
+      # Check if the iterated process is still active.
+      try:
+         os.getsid( int( pid_entry_iter ) )
+      except OSError:
+         logger.warn(
+            'No process found for PID {}. Removing lock...'.format(
+               pid_entry_iter
+            )
+         )
+         os.unlink( pid_lock_path )
+         continue
+
+      # Check if the iterated process is locking this mount.
+      with open( pid_lock_path ) as pid_lock_file:
+         for fs_line in pid_lock_file:
+            fs_status = fs_line.strip().split( ':' )
+            if fs_status[0] == fs_mount_path:
+               if perm == FS_ATTRIBS_OPPOSITE[fs_status[1]]:
+                  logger.warn(
+                     '"{}" is in use by {}, not remounting with "{}".'.format(
+                        fs_status[0], pid_entry_iter, perm
+                     )
+                  )
+                  return False
+
+   # No locks found.
+   return True
+
+def remount( fs_mount_path, perm, register_cleanup=True ):
+
+   logger = logging.getLogger( 'util.remount' )
+
+   if not perm in FS_ATTRIBS_OPPOSITE.keys():
+      raise RemountException( 'Unsupported perms: "{}"'.format( perm ) )
+
+   if _check_remount_lock( fs_mount_path, perm ):
+      logger.info( 'Remounting "{}" with "{}".'.format( fs_mount_path, perm ) )
+
+      # Create lock for this mount.
+      pid_lock_path = os.path.join( FS_REMOUNT_LOCK_PATH, str( os.getpid() ) )
+      if os.path.exists( pid_lock_path ):
+         # Append to the existing lock file.
+         with open( pid_lock_path, 'a' ) as pid_lock_file:
+            pid_lock_file.write( '\n{}:{}'.format( fs_mount_path, perm ) )
+      else:
+         # Create a new lock file.
+         with open( pid_lock_path, 'w' ) as pid_lock_file:
+            pid_lock_file.write( '{}:{}'.format( fs_mount_path, perm ) )
+
+      # Perform the remount and verify its success.
+      mount_proc = subprocess.Popen(
+         ['mount', '-o', 'remount,' + perm, fs_mount_path]
+      )
+      mount_proc.communicate()
+      if mount_proc.returncode:
+         raise Remounting( 'Mount process failed.' )
+      #else:
+      #   logger.debug( 'Remount completed successfully.' )
+
+      # Schedule automatic remount with opposite FS attrib for script exit.
+      if register_cleanup:
+         atexit.register(
+            remount, fs_mount_path, FS_ATTRIBS_OPPOSITE[perm], False
+         )
 
 def create_lock( lock_path ):
 
