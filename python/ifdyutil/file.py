@@ -33,6 +33,16 @@ FS_ATTRIBS_OPPOSITE = {
 }
 
 FS_REMOUNT_LOCK_PATH = '/var/lock/qnrmount'
+FS_MOUNT_LOCK_PATH = '/var/lock/qnmount'
+
+LOCK_TYPE_REMOUNT = 1
+LOCK_TYPE_MOUNT = 2
+
+class CryptException( Exception ):
+   pass
+
+class MountException( Exception ):
+   pass
 
 class RemountException( Exception ):
    pass
@@ -77,15 +87,42 @@ def get_process_pid( process_name, strict=True, uid=None ):
 
    return pids_out
 
-def _check_remount_lock( fs_mount_path, perm ):
+def _create_fs_lock( fs_mount_path, lock_type, perm='' ):
 
-   ''' Make sure we can perform the requested remount. Return True if we can,
-   or False otherwise. '''
+   # Determine our lock dir and make sure it exists.
+   if LOCK_TYPE_REMOUNT == lock_type:
+      lock_dir = FS_REMOUNT_LOCK_PATH
+   elif LOCK_TYPE_MOUNT == lock_type:
+      lock_dir = FS_MOUNT_LOCK_PATH
 
-   logger = logging.getLogger( 'util.remount.lock' )
+   if not os.path.isdir( lock_dir ):
+      os.makedirs( lock_dir )
 
-   for pid_entry_iter in os.listdir( FS_REMOUNT_LOCK_PATH ):
-      pid_lock_path = os.path.join( FS_REMOUNT_LOCK_PATH, pid_entry_iter )
+   # Create/append to the lock file.
+   pid_lock_path = os.path.join( lock_dir, str( os.getpid() ) )
+   if os.path.exists( pid_lock_path ):
+      # Append to the existing lock file.
+      with open( pid_lock_path, 'a' ) as pid_lock_file:
+         pid_lock_file.write( '\n{}:{}'.format( fs_mount_path, perm ) )
+   else:
+      # Create a new lock file.
+      with open( pid_lock_path, 'w' ) as pid_lock_file:
+         pid_lock_file.write( '{}:{}'.format( fs_mount_path, perm ) )
+
+def _check_fs_lock( fs_mount_path, lock_type, perm='' ):
+
+   ''' Make sure no other ifdy processes are still using the given mount.
+   Return True if none are, or False otherwise. '''
+
+   logger = logging.getLogger( 'util.mount.lock' )
+
+   if LOCK_TYPE_REMOUNT == lock_type:
+      lock_path = FS_REMOUNT_LOCK_PATH
+   elif LOCK_TYPE_MOUNT == lock_type:
+      lock_path = FS_MOUNT_LOCK_PATH
+
+   for pid_entry_iter in os.listdir( lock_path ):
+      pid_lock_path = os.path.join( lock_path, pid_entry_iter )
 
       # Check to make sure we're not looking at our own lock file.
       if int( pid_entry_iter ) == os.getpid():
@@ -108,13 +145,20 @@ def _check_remount_lock( fs_mount_path, perm ):
          for fs_line in pid_lock_file:
             fs_status = fs_line.strip().split( ':' )
             if fs_status[0] == fs_mount_path:
-               if perm == FS_ATTRIBS_OPPOSITE[fs_status[1]]:
+               if LOCK_TYPE_REMOUNT == lock_type:
+                  if perm == FS_ATTRIBS_OPPOSITE[fs_status[1]]:
+                     logger.warn(
+                        '"{}" in use by {}, not remounting with "{}".'.format(
+                           fs_status[0], pid_entry_iter, perm
+                        )
+                     )
+                     return False
+               elif LOCK_TYPE_MOUNT == lock_type:
                   logger.warn(
-                     '"{}" is in use by {}, not remounting with "{}".'.format(
-                        fs_status[0], pid_entry_iter, perm
+                     '"{}" in use by {}, not unmounting.'.format(
+                        fs_status[0], pid_entry_iter
                      )
                   )
-                  return False
 
    # No locks found.
    return True
@@ -126,19 +170,11 @@ def remount( fs_mount_path, perm, register_cleanup=True ):
    if not perm in FS_ATTRIBS_OPPOSITE.keys():
       raise RemountException( 'Unsupported perms: "{}"'.format( perm ) )
 
-   if _check_remount_lock( fs_mount_path, perm ):
+   if _check_fs_lock( fs_mount_path, LOCK_TYPE_REMOUNT, perm=perm ):
       logger.info( 'Remounting "{}" with "{}".'.format( fs_mount_path, perm ) )
 
       # Create lock for this mount.
-      pid_lock_path = os.path.join( FS_REMOUNT_LOCK_PATH, str( os.getpid() ) )
-      if os.path.exists( pid_lock_path ):
-         # Append to the existing lock file.
-         with open( pid_lock_path, 'a' ) as pid_lock_file:
-            pid_lock_file.write( '\n{}:{}'.format( fs_mount_path, perm ) )
-      else:
-         # Create a new lock file.
-         with open( pid_lock_path, 'w' ) as pid_lock_file:
-            pid_lock_file.write( '{}:{}'.format( fs_mount_path, perm ) )
+      _create_fs_lock( fs_mount_path, LOCK_TYPE_REMOUNT, perm=perm )
 
       # Perform the remount and verify its success.
       mount_proc = subprocess.Popen(
@@ -146,7 +182,7 @@ def remount( fs_mount_path, perm, register_cleanup=True ):
       )
       mount_proc.communicate()
       if mount_proc.returncode:
-         raise Remounting( 'Mount process failed.' )
+         raise RemountException( 'Mount process failed.' )
       #else:
       #   logger.debug( 'Remount completed successfully.' )
 
@@ -156,6 +192,93 @@ def remount( fs_mount_path, perm, register_cleanup=True ):
             remount, fs_mount_path, FS_ATTRIBS_OPPOSITE[perm], False
          )
 
+def mount_crypt(
+   block_path, map_name, mount_path, key_path, register_cleanup=True
+):
+
+   map_path = '/dev/mapper/{}'.format( map_name )
+
+   if not os.path.exists( key_path ):
+      raise CryptException( 'Could not locate key file: {}'.format( key_path ) )
+
+   if os.path.exists( map_path ):
+      raise CryptException( 'Mapper already exists: {}'.format( map_path ) )
+   
+   if not os.path.exists( block_path ):
+      raise MountException( 'Could not locate device: {}'.format( block_path ) )
+
+   if not os.path.isdir( mount_path ):
+      raise MountException( 'Bad mount path: {}'.format( mount_path ) )
+
+   # Check that path is not already mounted.
+   with open( '/proc/mounts', 'r' ) as mounts_file:
+      for line_iter in mounts_file:
+         line_array = line_iter.strip().split( ' ' )
+         if line_array[1] == mount_path:
+            raise MountException(
+               'Path already mounted: {}'.format( mount_path )
+            )
+
+   # Perform the device setup.
+   crypt_command = \
+      ['cryptsetup', 'luksOpen', block_path, '--key-file', key_path, map_name];
+
+   crypt_proc = subprocess.Popen(
+      crypt_command,
+      stdout=subprocess.PIPE, stderr=subprocess.PIPE
+   )
+   crypt_proc.communicate()
+
+   if crypt_proc.returncode:
+      # Try it read-only.
+      crypt_command.insert( 2, '--readonly' )
+      crypt_proc = subprocess.Popen(
+         crypt_command,
+         stdout=subprocess.PIPE, stderr=subprocess.PIPE
+      )
+      crypt_proc.communicate()
+      if crypt_proc.returncode:
+         raise CryptException(
+            'Could not open crypt volume: {}'.format( block_path )
+         )
+
+   # Check that the mapper exists.
+   if not os.path.exists( map_path ):
+      raise CryptException( 'Mapper file not created: {}'.format( map_path ) )
+
+   # Mount secforce if it's not already mounted.
+   mount_proc = subprocess.Popen(
+      ['mount', map_path, mount_path],
+      stdout=subprocess.PIPE, stderr=subprocess.PIPE
+   )
+   mount_proc.communicate()
+   if mount_proc.returncode:
+      raise MountException( 'Could not mount: {}'.format( mount_path ) )
+
+   _create_fs_lock( mount_path, LOCK_TYPE_MOUNT )
+
+   # Register atexit unmount.
+   if register_cleanup:
+      atexit.register( umount_crypt, map_name, mount_path )
+
+def umount_crypt( map_name, mount_path ):
+   if _check_fs_lock( mount_path, LOCK_TYPE_MOUNT ):
+      mount_proc = subprocess.Popen(
+         ['umount', mount_path],
+         stdout=subprocess.PIPE, stderr=subprocess.PIPE
+      )
+      mount_proc.communicate()
+      if mount_proc.returncode:
+         raise MountException( 'Could not unmount: {}'.format( mount_path ) )
+
+      crypt_proc = subprocess.Popen(
+         ['cryptsetup', 'luksClose', map_name],
+         stdout=subprocess.PIPE, stderr=subprocess.PIPE
+      )
+      crypt_proc.communicate()
+      if crypt_proc.returncode:
+         raise CryptException( 'Could not close map: {}'.format( map_name ) )
+
 def create_lock( lock_path ):
 
    ''' Create a lock file containing the PID of the current process. '''
@@ -163,6 +286,9 @@ def create_lock( lock_path ):
    if not os.path.isfile( lock_path ):
       with open( lock_path, 'w' ) as pid_file:
          pid_file.write( '{}'.format( os.getpid() ) )
+   else:
+      # TODO: If lock_path exists, add our pid to it.
+      pass
 
 def check_lock( lock_path, unlink_old=True ):
 
@@ -171,6 +297,9 @@ def check_lock( lock_path, unlink_old=True ):
 
    if os.access( lock_path, os.F_OK ):
       with open( lock_path, 'r' ) as pid_file:
+         
+         # TODO: Iterate through *all* pids in the lock file.
+
          pid_file.seek( 0 )
          existing_pid = pid_file.readline()
          if os.path.exists( '/proc/{}'.format( existing_pid ) ):
