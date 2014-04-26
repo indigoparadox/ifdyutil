@@ -290,7 +290,7 @@ def umount_crypt( map_name, mount_path ):
       # it until it goes.
       unmap_result = 1
       crypt_unmap_tries = 0
-      map_path = '/dev/mapper/{}'.format( map_name ):
+      map_path = '/dev/mapper/{}'.format( map_name )
       while crypt_unmap_tries < CRYPT_UNMAP_TRIES_MAX and unmap_result:
          crypt_proc = subprocess.Popen(
             ['cryptsetup', 'luksClose', map_name],
