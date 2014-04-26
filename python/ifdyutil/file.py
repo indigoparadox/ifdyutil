@@ -290,6 +290,7 @@ def umount_crypt( map_name, mount_path ):
       # it until it goes.
       unmap_result = 1
       crypt_unmap_tries = 0
+      map_path = '/dev/mapper/{}'.format( map_name ):
       while crypt_unmap_tries < CRYPT_UNMAP_TRIES_MAX and unmap_result:
          crypt_proc = subprocess.Popen(
             ['cryptsetup', 'luksClose', map_name],
@@ -302,7 +303,7 @@ def umount_crypt( map_name, mount_path ):
             # Try sleeping for a little.
             time.sleep( 1 )
 
-      if unmap_result:
+      if unmap_result and os.path.exists( map_path ):
          raise CryptException( 'Could not close map: {}'.format( map_name ) )
 
 def create_lock( lock_path ):
