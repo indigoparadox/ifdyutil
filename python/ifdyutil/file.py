@@ -24,6 +24,7 @@ import subprocess
 import re
 import logging
 import atexit
+import time
 
 FS_ATTRIBS_OPPOSITE = {
    'rw': 'ro',
@@ -37,6 +38,8 @@ FS_MOUNT_LOCK_PATH = '/var/lock/qnmount'
 
 LOCK_TYPE_REMOUNT = 1
 LOCK_TYPE_MOUNT = 2
+
+CRYPT_UNMAP_TRIES_MAX = 5
 
 class CryptException( Exception ):
    pass
@@ -159,6 +162,7 @@ def _check_fs_lock( fs_mount_path, lock_type, perm='' ):
                         fs_status[0], pid_entry_iter
                      )
                   )
+                  return False
 
    # No locks found.
    return True
@@ -192,6 +196,17 @@ def remount( fs_mount_path, perm, register_cleanup=True ):
             remount, fs_mount_path, FS_ATTRIBS_OPPOSITE[perm], False
          )
 
+def _mount_check( mount_path ):
+   
+   ''' Check that mount_path is not already mounted. '''
+
+   with open( '/proc/mounts', 'r' ) as mounts_file:
+      for line_iter in mounts_file:
+         line_array = line_iter.strip().split( ' ' )
+         if line_array[1] == mount_path:
+            return True
+   return False
+
 def mount_crypt(
    block_path, map_name, mount_path, key_path, register_cleanup=True
 ):
@@ -210,14 +225,16 @@ def mount_crypt(
    if not os.path.isdir( mount_path ):
       raise MountException( 'Bad mount path: {}'.format( mount_path ) )
 
-   # Check that path is not already mounted.
-   with open( '/proc/mounts', 'r' ) as mounts_file:
-      for line_iter in mounts_file:
-         line_array = line_iter.strip().split( ' ' )
-         if line_array[1] == mount_path:
-            raise MountException(
-               'Path already mounted: {}'.format( mount_path )
-            )
+   if _mount_check( mount_path ):
+      raise MountException( 'Path already mounted: {}'.format( mount_path ) )
+
+   # Create the lock and cleanup hook early in case we abort midway through
+   # mounting.
+   _create_fs_lock( mount_path, LOCK_TYPE_MOUNT )
+
+   # Register atexit unmount.
+   if register_cleanup:
+      atexit.register( umount_crypt, map_name, mount_path )
 
    # Perform the device setup.
    crypt_command = \
@@ -255,28 +272,37 @@ def mount_crypt(
    if mount_proc.returncode:
       raise MountException( 'Could not mount: {}'.format( mount_path ) )
 
-   _create_fs_lock( mount_path, LOCK_TYPE_MOUNT )
-
-   # Register atexit unmount.
-   if register_cleanup:
-      atexit.register( umount_crypt, map_name, mount_path )
-
 def umount_crypt( map_name, mount_path ):
    if _check_fs_lock( mount_path, LOCK_TYPE_MOUNT ):
-      mount_proc = subprocess.Popen(
-         ['umount', mount_path],
-         stdout=subprocess.PIPE, stderr=subprocess.PIPE
-      )
-      mount_proc.communicate()
-      if mount_proc.returncode:
-         raise MountException( 'Could not unmount: {}'.format( mount_path ) )
 
-      crypt_proc = subprocess.Popen(
-         ['cryptsetup', 'luksClose', map_name],
-         stdout=subprocess.PIPE, stderr=subprocess.PIPE
-      )
-      crypt_proc.communicate()
-      if crypt_proc.returncode:
+      # Make sure it's actually mounted before trying to unmount.
+      if _mount_check( mount_path ):
+         mount_proc = subprocess.Popen(
+            ['umount', mount_path],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+         )
+         mount_proc.communicate()
+         if mount_proc.returncode:
+            raise MountException( 'Could not unmount: {}'.format( mount_path ) )
+
+      # Don't make sure the device is mapped before trying to unmap because
+      # cryptsetup might be taking its sweet time. Just forcibly try to unmap
+      # it until it goes.
+      unmap_result = 1
+      crypt_unmap_tries = 0
+      while crypt_unmap_tries < CRYPT_UNMAP_TRIES_MAX and unmap_result:
+         crypt_proc = subprocess.Popen(
+            ['cryptsetup', 'luksClose', map_name],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+         )
+         crypt_proc.communicate()
+         unmap_result = crypt_proc.returncode
+         crypt_unmap_tries += 1
+         if unmap_result:
+            # Try sleeping for a little.
+            time.sleep( 1 )
+
+      if unmap_result:
          raise CryptException( 'Could not close map: {}'.format( map_name ) )
 
 def create_lock( lock_path ):
