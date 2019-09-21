@@ -21,30 +21,30 @@ import os
 import sys
 
 class InvalidPromptResponse( Exception ):
-   pass
+    pass
 
 def set_title( title ):
 
-   ''' Set terminal window/tab title. '''
+    ''' Set terminal window/tab title. '''
 
-   # TODO: Handle other platforms.
-   if os.getenv( 'STY' ):
-      # We're inside GNU Screen.
-      sys.stdout.write( '\033k{}\033\\'.format( title ) )
-   else:
-      # We're in UNIX.
-      sys.stdout.write( '\x1b]2;{}\x07'.format( title ) )
+    # TODO: Handle other platforms.
+    if os.getenv( 'STY' ):
+        # We're inside GNU Screen.
+        sys.stdout.write( '\033k{}\033\\'.format( title ) )
+    else:
+        # We're in UNIX.
+        sys.stdout.write( '\x1b]2;{}\x07'.format( title ) )
 
 def prompt_yn( prompt ):
-   
-   ''' Prompt a user to answer a simple Y/N question. '''
+    
+    ''' Prompt a user to answer a simple Y/N question. '''
 
-   print( '{} ([Y]es/[N]o)'.format( prompt ) )
-   response = raw_input()
-   if 'yes'.startswith( response.lower() ):
-      return True
-   elif 'no'.startswith( response.lower() ):
-      return False
-   else:
-      raise InvalidPromptResponse()
+    print( '{} ([Y]es/[N]o)'.format( prompt ) )
+    response = raw_input()
+    if 'yes'.startswith( response.lower() ):
+        return True
+    elif 'no'.startswith( response.lower() ):
+        return False
+    else:
+        raise InvalidPromptResponse()
 

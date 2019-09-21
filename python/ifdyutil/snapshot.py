@@ -21,50 +21,50 @@ import subprocess
 import re
 
 def snapshot_zfs( lvtarget, vgtarget ):
-   print "ZFS snapshot functionality not yet available."
-   return False
+    print "ZFS snapshot functionality not yet available."
+    return False
 
 def snapshot_lvm( lvtarget, vgtarget, size, ssname=None ):
-   if None == ssname:
-      # No snapshot name was defined, so use today's date.
-      ssname = date.today().strftime( '%Y%m%d' )
+    if None == ssname:
+        # No snapshot name was defined, so use today's date.
+        ssname = date.today().strftime( '%Y%m%d' )
 
-   # Code the snapshot according to today's date.
-   command = [
-      'lvcreate',
-      '-L%s' % size,
-      '-s',
-      '-n',
-      '%s%s' % (lvtarget, ssname),
-      '%s/%s' % (vgtarget, lvtarget)
-   ]
+    # Code the snapshot according to today's date.
+    command = [
+        'lvcreate',
+        '-L%s' % size,
+        '-s',
+        '-n',
+        '%s%s' % (lvtarget, ssname),
+        '%s/%s' % (vgtarget, lvtarget)
+    ]
 
-   # Call the command.
-   try:
-      subprocess.check_call( command )
-   except:
-      return False
+    # Call the command.
+    try:
+        subprocess.check_call( command )
+    except:
+        return False
 
-   # No news is good news.
-   return True
+    # No news is good news.
+    return True
 
 def clean_snapshots_lvm( lvtarget, vgtarget, maxdays ):
-   # TODO: Iterate through existing snapshots and drop snapshots older than
-   #       maxdays.
-   print "Snapshot cleanup is not yet available."
-   return False
+    # TODO: Iterate through existing snapshots and drop snapshots older than
+    #         maxdays.
+    print "Snapshot cleanup is not yet available."
+    return False
 
 def list_mounts_lvm():
-   pattern_mapper = re.compile( r'^/dev/mapper/(\S*)\s*(\S*)' )
-   lvm_mounts = [] # A list of tuples describing mounted LVM volumes.
-   try:
-      with open( '/proc/mounts', 'r' ) as file_mounts:
-         for line in file_mounts:
-            line_match = pattern_mapper.match( line )
-            if None != line_match:
-               lvm_mounts.append( line_match.groups() )
-   except:
-      return []
+    pattern_mapper = re.compile( r'^/dev/mapper/(\S*)\s*(\S*)' )
+    lvm_mounts = [] # A list of tuples describing mounted LVM volumes.
+    try:
+        with open( '/proc/mounts', 'r' ) as file_mounts:
+            for line in file_mounts:
+                line_match = pattern_mapper.match( line )
+                if None != line_match:
+                    lvm_mounts.append( line_match.groups() )
+    except:
+        return []
 
-   return lvm_mounts
+    return lvm_mounts
 

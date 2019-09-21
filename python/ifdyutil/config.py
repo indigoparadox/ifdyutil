@@ -21,66 +21,66 @@ import re
 import os
 
 class MissingConfigException( Exception ):
-   pass
+    pass
 
 class InsufficientPrivsException( Exception ):
-   pass
+    pass
 
 def load():
 
-   ''' Return the config for ifdy-scripts. Conglomerate system-wide config in
-   etc with user-specific config in ~/.qnvars.sh. '''
+    ''' Return the config for ifdy-scripts. Conglomerate system-wide config in
+    etc with user-specific config in ~/.qnvars.sh. '''
 
-   pattern_config_var = re.compile( r'^(#)?(\S*)=(\S*)' )
+    pattern_config_var = re.compile( r'^(#)?(\S*)=(\S*)' )
 
-   cfg = {}
+    cfg = {}
 
-   with open( '/etc/qnvars.sh' ) as system_config_file:
-      # Load the system-wide config.
-      for line in system_config_file:
-         config_match = pattern_config_var.match( line )
-         if None != config_match and None == config_match.groups()[0]:
-            cfg[config_match.groups()[1]] = config_match.groups()[2]
-
-   try:
-      with open( os.path.join( os.path.expanduser( '~' ), 'qnvars.sh' ) ) \
-      as system_config_file:
-         # Override settings with those found in the per-user config.
-         for line in system_config_file:
+    with open( '/etc/qnvars.sh' ) as system_config_file:
+        # Load the system-wide config.
+        for line in system_config_file:
             config_match = pattern_config_var.match( line )
             if None != config_match and None == config_match.groups()[0]:
-               cfg[config_match.groups()[1]] = config_match.groups()[2]
-   except:
-      # Per-user config is optional.
-      pass
+                cfg[config_match.groups()[1]] = config_match.groups()[2]
 
-   return cfg
+    try:
+        with open( os.path.join( os.path.expanduser( '~' ), 'qnvars.sh' ) ) \
+        as system_config_file:
+            # Override settings with those found in the per-user config.
+            for line in system_config_file:
+                config_match = pattern_config_var.match( line )
+                if None != config_match and None == config_match.groups()[0]:
+                    cfg[config_match.groups()[1]] = config_match.groups()[2]
+    except:
+        # Per-user config is optional.
+        pass
+
+    return cfg
 
 #def check( key, cfg=None, regex=None ):
 def check_var( key, cfg=None ):
-   
-   ''' Verify that the value stored under the key in cfg is not empty and
-   optionally matches regex. This function returns the value stored for key in
-   the config dictionary and should be used instead of [] for values that must
-   not be empty.'''
+    
+    ''' Verify that the value stored under the key in cfg is not empty and
+    optionally matches regex. This function returns the value stored for key in
+    the config dictionary and should be used instead of [] for values that must
+    not be empty.'''
 
-   # TODO: Implement regex.
+    # TODO: Implement regex.
 
-   if None == cfg:
-      cfg = load()
+    if None == cfg:
+        cfg = load()
 
-   try:
-      x = cfg[key]
-   except KeyError:
-      raise MissingConfigException(
-         'Config key %s is missing or invalid.' % key
-      )
+    try:
+        x = cfg[key]
+    except KeyError:
+        raise MissingConfigException(
+            'Config key %s is missing or invalid.' % key
+        )
 
-   return cfg[key]
+    return cfg[key]
 
 def check_root():
-   if 0 != os.geteuid():
-      raise InsufficientPrivsException(
-         'This script requires root privileges.'
-      )
+    if 0 != os.geteuid():
+        raise InsufficientPrivsException(
+            'This script requires root privileges.'
+        )
 

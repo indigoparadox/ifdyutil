@@ -21,14 +21,14 @@ import unittest
 from .. import config
 
 class ConfigTests( unittest.TestCase ):
-   def runTest( self ):
-      pass
+    def runTest( self ):
+        pass
 
-   def test_load( self ):
-      cfg = config.load()
+    def test_load( self ):
+        cfg = config.load()
 
-      assert 'true' == cfg['QN_VARS_DEFINED']
+        assert 'true' == cfg['QN_VARS_DEFINED']
 
-   def test_check( self ):
-      config.check_var( 'QN_VARS_DEFINED' )
+    def test_check( self ):
+        config.check_var( 'QN_VARS_DEFINED' )
 

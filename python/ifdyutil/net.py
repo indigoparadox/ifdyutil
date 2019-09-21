@@ -21,19 +21,19 @@ import subprocess
 
 def ssh_command_unsafe( remote_host, command ):
 
-   ''' Execute the given command on a remote host via SSH. The command can be a
-   string or it can be a list of strings that will be joined by && and
-   executed as one line.
-   
-   This function is unsane, as its name implies. It should be fine if the
-   remote server is resilient against arbitrary SSH commands, though. For
-   example, if it's using public key command restriction.'''
-   
-   if isinstance( command, list ):
-      # Iterate through the list and wrap it up.
-      command_exec = ' && '.join( command )
-   else:
-      command_exec = command
+    ''' Execute the given command on a remote host via SSH. The command can be a
+    string or it can be a list of strings that will be joined by && and
+    executed as one line.
+    
+    This function is unsane, as its name implies. It should be fine if the
+    remote server is resilient against arbitrary SSH commands, though. For
+    example, if it's using public key command restriction.'''
+    
+    if isinstance( command, list ):
+        # Iterate through the list and wrap it up.
+        command_exec = ' && '.join( command )
+    else:
+        command_exec = command
 
-   subprocess.call( [ 'ssh', remote_host, command_exec ] )
+    subprocess.call( [ 'ssh', remote_host, command_exec ] )
 

@@ -22,20 +22,20 @@ import mimetypes
 from .. import file
 
 class FileTests( unittest.TestCase ):
-   def runTest( self ):
-      pass
+    def runTest( self ):
+        pass
 
-   def test_listdir_mime( self ):
-      test_list = file.listdir_mime( '.', ['application/x-python-code'] )
-      assert [] != test_list
-      for entry in test_list:
-         assert 'application/x-python-code' == mimetypes.guess_type( entry )[0]
+    def test_listdir_mime( self ):
+        test_list = file.listdir_mime( '.', ['application/x-python-code'] )
+        assert [] != test_list
+        for entry in test_list:
+            assert 'application/x-python-code' == mimetypes.guess_type( entry )[0]
 
-   def test_get_process_pid( self ):
-      # TODO: Arrange an actual test for this.
-      #print file.get_process_pid( 'conky' )
-      pass
+    def test_get_process_pid( self ):
+        # TODO: Arrange an actual test for this.
+        #print file.get_process_pid( 'conky' )
+        pass
 
-   def test_remount( self ):
-      print file.remount( '/foo/fii', '/var/lock' )
+    def test_remount( self ):
+        print file.remount( '/foo/fii', '/var/lock' )
 

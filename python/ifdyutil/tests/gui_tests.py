@@ -21,9 +21,9 @@ import unittest
 from .. import gui
 
 class GUITests( unittest.TestCase ):
-   def runTest( self ):
-      pass
+    def runTest( self ):
+        pass
 
-   def test_desktop_up( self ):
-      assert gui.desktop_up() == True
+    def test_desktop_up( self ):
+        assert gui.desktop_up() == True
 

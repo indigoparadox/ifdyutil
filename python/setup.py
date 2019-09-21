@@ -23,18 +23,18 @@ import subprocess
 from distutils.core import setup
 
 if 'test' in sys.argv:
-   # Documentation isn't clear *at all* and too lazy to go find examples in
-   # other projects. You know your language has a problem when something is
-   # simpler to do in Java.
-   os.chdir( './ifdyutil/tests' )
-   subprocess.call( ['nosetests', 'file_tests.py'] )
-   subprocess.call( ['nosetests', 'config_tests.py'] )
-   exit()
+    # Documentation isn't clear *at all* and too lazy to go find examples in
+    # other projects. You know your language has a problem when something is
+    # simpler to do in Java.
+    os.chdir( './ifdyutil/tests' )
+    subprocess.call( ['nosetests', 'file_tests.py'] )
+    subprocess.call( ['nosetests', 'config_tests.py'] )
+    exit()
 
 setup(
-   name='ifdyutil',
-   # TODO: Figure out a way to grab the repo revision or something.
-   version='0.1',
-   packages=['ifdyutil']
+    name='ifdyutil',
+    # TODO: Figure out a way to grab the repo revision or something.
+    version='0.1',
+    packages=['ifdyutil']
 )
 

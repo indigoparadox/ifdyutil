@@ -25,18 +25,18 @@ OK = 0
 import sys
 
 def exit_unknown( message ):
-   print( 'UNKNOWN - {}'.format( message ) )
-   sys.exit( UNKNOWN )
+    print( 'UNKNOWN - {}'.format( message ) )
+    sys.exit( UNKNOWN )
 
 def exit_critical( message ):
-   print( 'CRITICAL - {}'.format( message ) )
-   sys.exit( CRITICAL )
+    print( 'CRITICAL - {}'.format( message ) )
+    sys.exit( CRITICAL )
 
 def exit_warning( message ):
-   print( 'WARNING - {}'.format( message ) )
-   sys.exit( WARNING )
+    print( 'WARNING - {}'.format( message ) )
+    sys.exit( WARNING )
 
 def exit_ok( message ):
-   print( 'OK - {}'.format( message ) )
-   sys.exit( OK )
+    print( 'OK - {}'.format( message ) )
+    sys.exit( OK )
 
